@@ -10,7 +10,9 @@ It also disables 18 ad/tracking packages (sponsored home-screen banners,
 ACR viewing-habit tracking, third-party ad partner tiles, retail demo
 bloatware) without deleting anything, fully reversible.
 
-![before/after](docs/before-after.png) <!-- add your own screenshots -->
+
+<img width="1501" height="938" alt="file-51768aad5a2f5b57f4580095c218136b" src="https://github.com/user-attachments/assets/2af07711-4fd0-47ff-8f31-f3a10afdad72" />
+
 
 ## How it works
 
