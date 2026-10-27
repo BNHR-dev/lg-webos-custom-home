@@ -89,6 +89,16 @@ remains unmeasured. The clock and CSS animations pause in the background.
   Official Homebrew startup, existing SSH hook and project hook unchanged.
 - No new HDMI trials; no edits to video apps, firmware, ads or update settings.
 
+## Generic package recheck after the pause
+
+The published commit `9e9677f` was exported into an isolated temporary directory
+with `git archive`, then built using the existing webOS CLI and the tracked example
+configuration. Packaging succeeded for 0.2.2; both example app entries and all
+referenced local backgrounds were present. No private config or branded assets
+were required or copied. This package was not installed over the personal TV build.
+The runtime text fallback handles absent service logos. Existing UI and integration
+trials were reused; no new performance series or playback interruption was needed.
+
 ## File backup and rollback
 
 Before updating, privately preserve the installed app files/assets/config, recovery

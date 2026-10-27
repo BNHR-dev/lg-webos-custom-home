@@ -1,4 +1,9 @@
-# Manual developer-mode home app
+# Manual developer-mode home app — historical 0.1 trial
+
+For the current 0.2.2 app and packaging instructions, use the
+[Panorama guide](panorama.md). This page retains the original manual-only trial;
+the optional [system integration](system-integration.md) is now available separately.
+Use an existing root connection on a rooted TV; do not reinstall Developer Mode.
 
 This branch adds a standalone launcher inspired by NaveenDA's original clock, starfield and app/input rows. It opens manually like any other web app. It does not replace the system launcher, intercept Home, start at boot, mask advertising components, or require root. The original project, history, MIT license and author credits are retained.
 
