@@ -1,3 +1,12 @@
+> **BNHR developer-mode trial — branch `bnhr-webos25`**
+>
+> A standalone, manually opened home app is available in [`developer_home/`](developer_home/).
+> Start with the [installation/configuration/removal guide](docs/developer-home.md) and the
+> [firmware-specific test record](docs/webos25-test-record.md).
+> It does not require root or change Home, boot behavior or advertising components.
+> The original project and instructions below are retained with credit to NaveenDA;
+> their root-dependent features are not validated on webOS 25 by this fork.
+
 # LG webOS Custom Home Screen
 
 Replaces the stock LG webOS home screen with a custom HTML/CSS/JS launcher,

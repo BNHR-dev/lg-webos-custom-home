@@ -1,0 +1,14 @@
+{
+  "id": "com.bnhr.customhome",
+  "version": "0.1.0",
+  "vendor": "BNHR-dev",
+  "type": "web",
+  "main": "index.html",
+  "title": "Mon accueil",
+  "icon": "icon.png",
+  "largeIcon": "largeIcon.png",
+  "iconColor": "#142b46",
+  "trustLevel": "default",
+  "disableBackHistoryAPI": true,
+  "resolution": "1920x1080"
+}

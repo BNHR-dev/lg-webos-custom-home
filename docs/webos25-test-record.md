@@ -1,0 +1,42 @@
+# Developer-mode trial — 2026-10-27
+
+Hardware/firmware scope: one LG **43UR78006LK**, firmware **33.31.75**. The TV UI version was reported by the owner as **webOS 25**; `com.webos.service.tv.systemproperty/getSystemInfo` independently returned the model, firmware and **SDK 10.3.2**. Do not generalize this trial to all webOS 25 TVs.
+
+Host: Fedora KDE, webOS CLI 3.2.6; application `com.bnhr.customhome` version 0.1.0, `trustLevel: default`. Existing developer SSH session UID 6672 (`prisoner`); no root procedure. Homebrew's `checkRoot` returned false and Updater's `status` returned a nonzero UID. No elevated service was used.
+
+## Observed results
+
+| Check | Result and scope |
+| --- | --- |
+| Package | Built on Fedora with ares-package; installation returned Success. |
+| Registration/start | ares-launch returned Launched; dev/running included this app; its own inspector DOM reached readyState complete. |
+| Installed shortcuts | Developer inventory returned seven real IDs/titles. Local trial includes all seven; the public example contains only two generic community app examples. |
+| YouTube AdFree | Manifest/inventory confirms `youtube.leanback.v4` 0.5.3. Triggering its tile from the actual launcher was followed by YouTube in dev/running. Video playback/audio and physical OK are awaiting owner testing. |
+| Twitch AdFree | Manifest/inventory confirms `twitch.adamffdev.v1` 1.6.6. Triggering its actual tile was followed by Twitch in dev/running. Stream playback/audio and physical OK are awaiting owner testing. |
+| Shortcut availability | getAppLoadStatus returned true/exist true in the app's own context for all configured shortcuts. |
+| HDMI discovery | getAllInputStatus succeeded from the app context and returned three hardware entries with app IDs `com.webos.app.hdmi1`, `com.webos.app.hdmi2`, `com.webos.app.hdmi3`. All three tiles rendered. |
+| HDMI launch | A tile-triggered HDMI 1 request was observed in the launcher's inspector; its response was not captured after context loss/suspension. A separate launch call over the existing non-root public Luna connection returned returnValue true for HDMI 1. Actual switching, picture/audio and the other two launch actions remain visually unverified. |
+| TV rendering | Capture of the actual launcher inspected locally: clock/date, seven app shortcuts in a horizontal row, three inputs, readable footer and visible focus. No TV screenshot or raw inventory is published. |
+| TV navigation code | Six synthetic ArrowRight events inside the real app selected the final shortcut and scrolled it fully into the viewport. No JavaScript error in the accessible in-memory log at inspection. Physical remote still requires a short test. |
+| Local browser tests | Two tests passed with mocked Luna: navigation, disabled missing app, one OK launch, Back, denied HDMI discovery, launch error display, bridge cleanup and footer layout. |
+| Uninstall | Exact-package removal command/script prepared; not executed because the app is retained for testing. |
+
+## API limits and correction to the preliminary diagnosis
+
+The initial SSH diagnostic closed stdin immediately. `luna-send-pub` then exited without reporting responses. Keeping stdin open fixes these queries; exit status 0 alone was never evidence of a successful service call.
+
+Verified accessible: developer `dev/listApps`, `getAppLoadStatus`, systemproperty/getSystemInfo, eim/getAllInputStatus and the tested launch requests. The unqualified listApps and getForegroundAppInfo calls are denied from the developer shell. The guessed service `com.webos.service.tv.externaldevice` does not exist here; the app uses the verified eim endpoint instead.
+
+Root-only `luna-send` remains unavailable. Kernel raw-input format and Python watcher execution are irrelevant to this manual app and have not been validated.
+
+## Pending physical validation
+
+The owner has been asked to test arrows/OK, YouTube and Twitch opening, manual reopening of Mon accueil, an HDMI input and Return. No physical-test success is claimed before that reply. Network playback and login state of the target apps are outside launcher API validation.
+
+The stock launcher, physical Home handling, power-on behavior and ad components were left unchanged. This branch makes **no compatibility claim for replacing Home, automatic startup, the legacy watchers, root persistence or ad masking on webOS 25**.
+
+## Credits and reproducibility
+
+This is a real fork of NaveenDA/lg-webos-custom-home, preserving its history and MIT license. New work lives in developer_home/, scripts/, tests/ and docs/ on branch bnhr-webos25. The original custom_home/, watchers/, init.d/ and ads/ remain unchanged.
+
+The private trial configuration is ignored by Git. Public code uses configurable app IDs and runtime input discovery; no target IP, SSH key, passphrase, Dev Manager export, serial number or raw service/inspector log is part of this record.

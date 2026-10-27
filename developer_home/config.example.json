@@ -1,0 +1,10 @@
+{
+  "title": "Mon accueil",
+  "locale": "fr-FR",
+  "apps": [
+    { "id": "youtube.leanback.v4", "name": "YouTube AdFree", "color": "#d62228", "symbol": "▶" },
+    { "id": "twitch.adamffdev.v1", "name": "Twitch AdFree", "color": "#7042b8", "symbol": "Twitch" }
+  ],
+  "discoverInputs": true,
+  "inputs": []
+}

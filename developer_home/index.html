@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mon accueil</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<canvas id="stars" aria-hidden="true"></canvas>
+<main>
+  <header><div><h1 id="title">Mon accueil</h1><p id="date"></p></div><time id="clock"></time></header>
+  <section aria-labelledby="apps-label"><h2 id="apps-label">Applications</h2><div id="apps" class="row"></div><p id="empty-apps" hidden>Aucune application configurée.</p></section>
+  <section id="inputs-section" aria-labelledby="inputs-label" hidden><h2 id="inputs-label">Entrées HDMI</h2><div id="inputs" class="row"></div></section>
+  <footer><p>Flèches : choisir <span>OK : ouvrir</span><span>Retour : quitter</span></p><p id="status" role="status" aria-live="polite">Vérification des raccourcis…</p></footer>
+</main>
+<script src="config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

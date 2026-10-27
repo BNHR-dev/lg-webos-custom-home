@@ -1,0 +1,13 @@
+node_modules/
+dist/
+*.local.json
+*.local.js
+*.key
+*.pem
+.env*
+.ssh/
+.webos/
+novacom-devices.json
+*.ipk
+*.log
+__pycache__/
