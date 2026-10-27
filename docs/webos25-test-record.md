@@ -1,5 +1,7 @@
 # Developer-mode trial — 2026-10-27
 
+This record describes the original manual-launcher trial. A later [administrator-access phase](administrator-access.md) verified root/SSH persistence and preserved this launcher unchanged; it did not validate Home replacement or automatic launcher startup.
+
 Hardware/firmware scope: one LG **43UR78006LK**, firmware **33.31.75**. The TV UI version was reported by the owner as **webOS 25**; `com.webos.service.tv.systemproperty/getSystemInfo` independently returned the model, firmware and **SDK 10.3.2**. Do not generalize this trial to all webOS 25 TVs.
 
 Host: Fedora KDE, webOS CLI 3.2.6; application `com.bnhr.customhome` version 0.1.0, `trustLevel: default`. Existing developer SSH session UID 6672 (`prisoner`); no root procedure. Homebrew's `checkRoot` returned false and Updater's `status` returned a nonzero UID. No elevated service was used.

@@ -5,7 +5,8 @@
 > [firmware-specific test record](docs/webos25-test-record.md).
 > It does not require root or change Home, boot behavior or advertising components.
 > The original project and instructions below are retained with credit to NaveenDA;
-> their root-dependent features are not validated on webOS 25 by this fork.
+> their root-dependent launcher features are not validated on webOS 25 by this fork.
+> Administrator access was verified separately: [root/SSH test record](docs/administrator-access.md).
 
 # LG webOS Custom Home Screen
 

@@ -4,7 +4,7 @@ This branch adds a standalone launcher inspired by NaveenDA's original clock, st
 
 ## Build and install
 
-Prerequisites: Python 3, Node.js, npm, and an existing developer-mode TV connection. webOS CLI 3.2.6 was used for this trial. Follow the [LG CLI guide](https://webostv.developer.lge.com/develop/tools/cli-dev-guide) for CLI usage. Developer Mode must remain valid; expiry can remove developer apps.
+Prerequisites: Python 3, Node.js, npm, and an existing developer-mode TV connection. webOS CLI 3.2.6 was used for this trial. Follow the [LG CLI guide](https://webostv.developer.lge.com/develop/tools/cli-dev-guide) for CLI usage. For a Developer Mode installation, that mode must remain valid; expiry can remove developer apps. A later rooted migration is documented separately in the [administrator-access record](administrator-access.md); after such migration use a root connection rather than the old prisoner alias.
 
 From this repository:
 
