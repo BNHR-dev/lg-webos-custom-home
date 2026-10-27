@@ -15,10 +15,11 @@ Host: Fedora KDE, webOS CLI 3.2.6; application `com.bnhr.customhome` version 0.1
 | Twitch AdFree | Manifest/inventory confirms `twitch.adamffdev.v1` 1.6.6. Triggering its actual tile was followed by Twitch in dev/running. The owner subsequently confirmed that opening Twitch AdFree from the launcher works and the application functions correctly. Separate stream/audio quality checks were not itemized. |
 | Shortcut availability | getAppLoadStatus returned true/exist true in the app's own context for all configured shortcuts. |
 | HDMI discovery | getAllInputStatus succeeded from the app context and returned three hardware entries with app IDs `com.webos.app.hdmi1`, `com.webos.app.hdmi2`, `com.webos.app.hdmi3`. All three tiles rendered. |
-| HDMI launch | A tile-triggered HDMI 1 request was observed in the launcher's inspector; its response was not captured after context loss/suspension. A separate launch call over the existing non-root public Luna connection returned returnValue true for HDMI 1. Actual switching, picture/audio and the other two launch actions remain visually unverified. |
+| HDMI launch | A tile-triggered HDMI 1 request was observed in the launcher's inspector; its response was not captured after context loss/suspension. A separate launch call over the existing non-root public Luna connection returned returnValue true for HDMI 1. The owner subsequently confirmed that the HDMI 1 shortcut switches to the expected input screen. No source device was connected, so picture/audio with an active source were not tested. HDMI 2 and HDMI 3 launch actions remain unverified. |
 | TV rendering | Capture of the actual launcher inspected locally: clock/date, seven app shortcuts in a horizontal row, three inputs, readable footer and visible focus. No TV screenshot or raw inventory is published. |
 | TV navigation code | Six synthetic ArrowRight events inside the real app selected the final shortcut and scrolled it fully into the viewport. No JavaScript error in the accessible in-memory log at inspection. The owner subsequently confirmed successful opening of both media apps during the requested remote-control trial; all navigation paths have not been exhaustively checked. |
 | Local browser tests | Two tests passed with mocked Luna: navigation, disabled missing app, one OK launch, Back, denied HDMI discovery, launch error display, bridge cleanup and footer layout. |
+| Return key | The owner pressed Return from Mon accueil and confirmed arrival at the LG system home. |
 | Uninstall | Exact-package removal command/script prepared; not executed because the app is retained for testing. |
 
 ## API limits and correction to the preliminary diagnosis
@@ -31,7 +32,7 @@ Root-only `luna-send` remains unavailable. Kernel raw-input format and Python wa
 
 ## Owner feedback and remaining physical validation
 
-On 2026-10-27, after the requested visual/remote-control trial, the owner confirmed that YouTube AdFree and Twitch AdFree both opened and functioned correctly. This is owner-reported validation, in addition to the earlier API/inspector observations. HDMI picture/audio, Return-to-exit and exhaustive navigation remain unconfirmed. No separate playback-duration, audio-quality or login-state test was reported.
+On 2026-10-27, after the requested visual/remote-control trial, the owner confirmed that YouTube AdFree and Twitch AdFree both opened and functioned correctly. This is owner-reported validation, in addition to the earlier API/inspector observations. The owner also confirmed expected HDMI 1 switching with no source connected, and Return from Mon accueil leading to the LG system home. HDMI 2/3, HDMI picture/audio with an active source and exhaustive navigation remain unconfirmed. No separate playback-duration, audio-quality or login-state test was reported.
 
 The stock launcher, physical Home handling, power-on behavior and ad components were left unchanged. This branch makes **no compatibility claim for replacing Home, automatic startup, the legacy watchers, root persistence or ad masking on webOS 25**.
 
