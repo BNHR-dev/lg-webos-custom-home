@@ -11,3 +11,5 @@ novacom-devices.json
 *.ipk
 *.log
 __pycache__/
+private-assets/
+output/

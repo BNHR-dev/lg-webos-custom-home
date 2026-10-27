@@ -1,6 +1,7 @@
-> **BNHR developer-mode trial — branch `bnhr-webos25`**
+> **BNHR Panorama launcher — branch `bnhr-webos25`**
 >
-> A standalone, manually opened home app is available in [`developer_home/`](developer_home/).
+> [Panorama 0.2.0: configuration, settings and UI rollback](docs/panorama.md).
+> A standalone home app is available in [`developer_home/`](developer_home/).
 > Start with the [installation/configuration/removal guide](docs/developer-home.md) and the
 > [firmware-specific test record](docs/webos25-test-record.md).
 > It does not require root or change Home, boot behavior or advertising components.

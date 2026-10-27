@@ -2,9 +2,29 @@
   "title": "Mon accueil",
   "locale": "fr-FR",
   "apps": [
-    { "id": "youtube.leanback.v4", "name": "YouTube AdFree", "color": "#d62228", "symbol": "▶" },
-    { "id": "twitch.adamffdev.v1", "name": "Twitch AdFree", "color": "#7042b8", "symbol": "Twitch" }
+    {
+      "id": "youtube.leanback.v4",
+      "name": "YouTube AdFree",
+      "category": "entertainment"
+    },
+    {
+      "id": "twitch.adamffdev.v1",
+      "name": "Twitch AdFree",
+      "category": "entertainment"
+    }
   ],
   "discoverInputs": true,
-  "inputs": []
+  "inputs": [],
+  "backgrounds": [
+    {
+      "id": "panorama",
+      "name": "Horizon",
+      "src": "assets/panorama.svg"
+    },
+    {
+      "id": "dunes",
+      "name": "Dunes",
+      "src": "assets/dunes.svg"
+    }
+  ]
 }

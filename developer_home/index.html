@@ -1,20 +1,15 @@
-<!doctype html>
-<html lang="fr">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Mon accueil</title>
-<link rel="stylesheet" href="style.css">
-</head>
-<body>
-<canvas id="stars" aria-hidden="true"></canvas>
+<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Mon accueil</title><link rel="stylesheet" href="style.css"></head><body>
+<div id="stage" class="panorama">
+<header><div class="brand"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M4 15 16 5l12 10v13H4Z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M13 28V17h6v11" fill="none" stroke="currentColor" stroke-width="2"/></svg><span>Mon accueil</span></div><div class="top-right"><span id="date"></span><time id="clock">20:42</time></div></header>
+
 <main>
-  <header><div><h1 id="title">Mon accueil</h1><p id="date"></p></div><time id="clock"></time></header>
-  <section aria-labelledby="apps-label"><h2 id="apps-label">Applications</h2><div id="apps" class="row"></div><p id="empty-apps" hidden>Aucune application configurée.</p></section>
-  <section id="inputs-section" aria-labelledby="inputs-label" hidden><h2 id="inputs-label">Entrées HDMI</h2><div id="inputs" class="row"></div></section>
-  <footer><p>Flèches : choisir <span>OK : ouvrir</span><span>Retour : quitter</span></p><p id="status" role="status" aria-live="polite">Vérification des raccourcis…</p></footer>
+<section id="hero"><div><p id="section-kicker">À regarder</p><h1 id="selected-title">YouTube AdFree</h1><p id="selected-description">Vidéos, chaînes et abonnements.</p><p class="hero-action"><span class="key">OK</span> Ouvrir l’application</p></div><div class="scene" aria-hidden="true"><img src="assets/panorama.svg" alt=""></div></section>
+<section id="library" aria-label="Applications"><div class="section-heading"><h2>Vos applications</h2><span id="position">1 / 8</span></div><div id="apps" class="app-list"></div></section>
+<section id="utilities"><h2>Entrées et préférences</h2><div class="utility-row" id="utility-row"></div></section>
 </main>
-<script src="config.js"></script>
-<script src="app.js"></script>
-</body>
-</html>
+<footer><div><span class="key">↔ ↕</span> Choisir <span class="key">OK</span> Ouvrir <span class="key">↩</span> Retour</div><span id="focus-label">YouTube AdFree</span></footer>
+<div id="shade" hidden></div>
+<section id="settings" role="dialog" aria-modal="true" aria-labelledby="settings-title" hidden><div class="panel-header"><h2 id="settings-title">Paramètres</h2><span class="key">↩ Retour</span></div><div id="settings-content"></div><p id="settings-status" role="status" aria-live="polite"></p></section>
+<section id="feedback" role="dialog" aria-modal="true" aria-labelledby="feedback-title" hidden><div id="feedback-icon"></div><p id="feedback-tag">Ouverture</p><h2 id="feedback-title"></h2><p id="feedback-detail"></p><div id="feedback-actions"></div></section>
+</div>
+<script src="config.js"></script><script src="preferences.js"></script><script src="app.js"></script></body></html>
