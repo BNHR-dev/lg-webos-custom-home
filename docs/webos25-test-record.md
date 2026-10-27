@@ -11,13 +11,13 @@ Host: Fedora KDE, webOS CLI 3.2.6; application `com.bnhr.customhome` version 0.1
 | Package | Built on Fedora with ares-package; installation returned Success. |
 | Registration/start | ares-launch returned Launched; dev/running included this app; its own inspector DOM reached readyState complete. |
 | Installed shortcuts | Developer inventory returned seven real IDs/titles. Local trial includes all seven; the public example contains only two generic community app examples. |
-| YouTube AdFree | Manifest/inventory confirms `youtube.leanback.v4` 0.5.3. Triggering its tile from the actual launcher was followed by YouTube in dev/running. Video playback/audio and physical OK are awaiting owner testing. |
-| Twitch AdFree | Manifest/inventory confirms `twitch.adamffdev.v1` 1.6.6. Triggering its actual tile was followed by Twitch in dev/running. Stream playback/audio and physical OK are awaiting owner testing. |
+| YouTube AdFree | Manifest/inventory confirms `youtube.leanback.v4` 0.5.3. Triggering its tile from the actual launcher was followed by YouTube in dev/running. The owner subsequently confirmed that opening YouTube AdFree from the launcher works and the application functions correctly. Separate picture/audio quality checks were not itemized. |
+| Twitch AdFree | Manifest/inventory confirms `twitch.adamffdev.v1` 1.6.6. Triggering its actual tile was followed by Twitch in dev/running. The owner subsequently confirmed that opening Twitch AdFree from the launcher works and the application functions correctly. Separate stream/audio quality checks were not itemized. |
 | Shortcut availability | getAppLoadStatus returned true/exist true in the app's own context for all configured shortcuts. |
 | HDMI discovery | getAllInputStatus succeeded from the app context and returned three hardware entries with app IDs `com.webos.app.hdmi1`, `com.webos.app.hdmi2`, `com.webos.app.hdmi3`. All three tiles rendered. |
 | HDMI launch | A tile-triggered HDMI 1 request was observed in the launcher's inspector; its response was not captured after context loss/suspension. A separate launch call over the existing non-root public Luna connection returned returnValue true for HDMI 1. Actual switching, picture/audio and the other two launch actions remain visually unverified. |
 | TV rendering | Capture of the actual launcher inspected locally: clock/date, seven app shortcuts in a horizontal row, three inputs, readable footer and visible focus. No TV screenshot or raw inventory is published. |
-| TV navigation code | Six synthetic ArrowRight events inside the real app selected the final shortcut and scrolled it fully into the viewport. No JavaScript error in the accessible in-memory log at inspection. Physical remote still requires a short test. |
+| TV navigation code | Six synthetic ArrowRight events inside the real app selected the final shortcut and scrolled it fully into the viewport. No JavaScript error in the accessible in-memory log at inspection. The owner subsequently confirmed successful opening of both media apps during the requested remote-control trial; all navigation paths have not been exhaustively checked. |
 | Local browser tests | Two tests passed with mocked Luna: navigation, disabled missing app, one OK launch, Back, denied HDMI discovery, launch error display, bridge cleanup and footer layout. |
 | Uninstall | Exact-package removal command/script prepared; not executed because the app is retained for testing. |
 
@@ -29,9 +29,9 @@ Verified accessible: developer `dev/listApps`, `getAppLoadStatus`, systempropert
 
 Root-only `luna-send` remains unavailable. Kernel raw-input format and Python watcher execution are irrelevant to this manual app and have not been validated.
 
-## Pending physical validation
+## Owner feedback and remaining physical validation
 
-The owner has been asked to test arrows/OK, YouTube and Twitch opening, manual reopening of Mon accueil, an HDMI input and Return. No physical-test success is claimed before that reply. Network playback and login state of the target apps are outside launcher API validation.
+On 2026-10-27, after the requested visual/remote-control trial, the owner confirmed that YouTube AdFree and Twitch AdFree both opened and functioned correctly. This is owner-reported validation, in addition to the earlier API/inspector observations. HDMI picture/audio, Return-to-exit and exhaustive navigation remain unconfirmed. No separate playback-duration, audio-quality or login-state test was reported.
 
 The stock launcher, physical Home handling, power-on behavior and ad components were left unchanged. This branch makes **no compatibility claim for replacing Home, automatic startup, the legacy watchers, root persistence or ad masking on webOS 25**.
 
