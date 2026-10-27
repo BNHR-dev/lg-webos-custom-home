@@ -22,3 +22,9 @@
 .panorama .app-list { contain:layout paint; transform:translateZ(0); }
 
 .app-button .app-name.duplicate { visibility: hidden; }
+
+/* Stable geometry and immediate focus; scroll only when a tile would be clipped. */
+.panorama .app-button {border-width:4px;transition:none;}
+.panorama .app-button.brand-lockup {gap:0;}
+.panorama .app-button.brand-lockup .logo {width:240px;height:120px;}
+.panorama .app-button.brand-lockup .app-name {display:none;}

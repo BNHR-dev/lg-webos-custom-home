@@ -10,6 +10,7 @@ import subprocess
 import sys
 import time
 from engine import Daemon, boot_time, luna, read_json, write_json
+import home_route
 
 ROOT = pathlib.Path('/var/lib/bnhr-customhome-integration')
 RUNTIME = pathlib.Path('/tmp/bnhr-customhome-integration')
@@ -29,8 +30,14 @@ def pid():
 
 
 def start(boot=False):
-    if pid():
-        return
+    if pid(): return
+    config = read_json(ROOT / 'config.json', {})
+    if config.get('home_mode') == 'native' and config.get('home'):
+        try:
+            home_route.activate(config, luna)
+        except RuntimeError:
+            home_route.restore(config, luna)
+            raise
     RUNTIME.mkdir(parents=True, exist_ok=True)
     with (RUNTIME / 'process.log').open('ab') as out:
         subprocess.Popen([sys.executable, str(ROOT / 'control.py'), 'run'] + (['--boot'] if boot else []),
@@ -58,7 +65,7 @@ def stop():
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('command', choices=['init', 'status', 'home', 'power', 'start', 'stop',
-                                           'persist', 'lg-home', 'remove', 'run'])
+                                           'persist', 'lg-home', 'remove', 'run', 'mode'])
     parser.add_argument('value', nargs='?')
     parser.add_argument('--input-name')
     parser.add_argument('--key-code', type=int)
@@ -80,15 +87,32 @@ def main():
         write_json(RUNTIME / 'boot-handled.json', {'handled': True})
     elif args.command == 'status':
         state = read_json(RUNTIME / 'status.json', {})
-        print(json.dumps({'config': config, 'daemon_pid': pid(), 'persistent_hook': HOOK.exists(),
-                          'runtime': state}, indent=2)); return
+        report = {'config': config, 'daemon_pid': pid(), 'persistent_hook': HOOK.exists(), 'runtime': state}
+        try: report['sam_home'] = home_route.mapping(luna).get('home', config.get('stock_home'))
+        except RuntimeError as error: report['sam_home_error'] = str(error)
+        print(json.dumps(report, indent=2)); return
     elif args.command == 'run':
         if not config: raise RuntimeError('Not initialized')
         return Daemon(ROOT, RUNTIME, args.boot).run()
-    elif args.command == 'stop': stop(); return
+    elif args.command == 'stop':
+        stop(); home_route.restore(config, luna); return
     elif args.command == 'start': start(args.boot); return
+    elif args.command == 'mode':
+        if args.value not in ['native', 'passive']: raise RuntimeError('Use native or passive')
+        if args.value == 'native':
+            home_route.registered(config, luna)
+            home_route.remember(config, luna)
+            write_json(path, config)  # Recovery information precedes the persistent SAM change.
+            if config.get('home'): home_route.activate(config, luna)
+        else:
+            home_route.restore(config, luna)
+        config['home_mode'] = args.value
+        write_json(path, config)
+        if config.get('home') or config.get('power'): start()
     elif args.command in ['home', 'power']:
         if args.value not in ['on', 'off']: raise RuntimeError('Use on or off')
+        if args.command == 'home' and args.value == 'on' and config.get('home_mode') == 'native':
+            home_route.activate(config, luna)
         config[args.command] = args.value == 'on'
         if args.command == 'home':
             config['lease_until'] = time.time() + args.temporary if config['home'] and args.temporary else 0
@@ -96,6 +120,7 @@ def main():
             # Enabling midway through a session must not create a fake boot.
             write_json(RUNTIME / 'boot-handled.json', {'handled': True})
         write_json(path, config)
+        if args.command == 'home' and not config['home']: home_route.restore(config, luna)
         if config['home'] or config['power']: start()
     elif args.command == 'persist':
         if args.value == 'on':
@@ -112,7 +137,7 @@ def main():
         result = luna('luna://com.webos.applicationManager/launch', {'id': config['stock_home']})
         print(json.dumps(result)); return
     elif args.command == 'remove':
-        stop(); HOOK.unlink(missing_ok=True)
+        stop(); home_route.restore(config, luna); HOOK.unlink(missing_ok=True)
         # Fixed project directories only. Never remove applications, webosbrew or root hooks.
         shutil.rmtree(ROOT)
         shutil.rmtree(RUNTIME, ignore_errors=True)

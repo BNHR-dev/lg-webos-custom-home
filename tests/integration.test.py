@@ -1,8 +1,10 @@
 import importlib.util
 import pathlib
 import tempfile
+import sys
 import unittest
 from unittest.mock import patch
+sys.path.insert(0,str(pathlib.Path(__file__).resolve().parents[1]/'system_integration'))
 spec = importlib.util.spec_from_file_location('engine', pathlib.Path(__file__).resolve().parents[1]/'system_integration/engine.py')
 e = importlib.util.module_from_spec(spec); spec.loader.exec_module(e)
 
@@ -119,5 +121,68 @@ class IntegrationTests(unittest.TestCase):
                 restarted=e.Daemon(root,root/'runtime',boot=True);restarted.refresh()
                 self.assertIsNone(restarted.pending_power)
                 first.select.close();restarted.select.close()
+
+    def test_home_polling_never_redirects_video_without_lg_foreground(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root=pathlib.Path(temp);daemon=e.Daemon(root,root/'runtime')
+            daemon.config={'app_id':'test.home','stock_home':'test.lg'}
+            daemon.pending_home={'due':0,'until':1e20,'tries':0}
+            with patch.object(e,'luna',return_value={'appId':'test.video'}) as api:
+                for _ in range(21):
+                    if daemon.pending_home:daemon.pending_home['due']=0
+                    daemon.actions()
+                self.assertTrue(all(c.args[0].endswith('getForegroundAppInfo') for c in api.call_args_list))
+            self.assertIsNone(daemon.pending_home)
+            daemon.select.close()
+
+    def test_expired_home_does_not_launch_even_if_lg_event_arrives_late(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root=pathlib.Path(temp);daemon=e.Daemon(root,root/'runtime')
+            daemon.config={'app_id':'test.home','stock_home':'test.lg'}
+            daemon.pending_home={'due':0,'until':0,'tries':0}
+            with patch.object(e,'luna',return_value={'appId':'test.lg'}) as api:
+                daemon.actions();self.assertEqual(api.call_count,1)
+            self.assertIsNone(daemon.pending_home)
+            daemon.select.close()
+
+    def test_native_lg_origin_qualifies_only_recent_stock_home(self):
+        origin=e.NativeHomeOrigin('lg','ours')
+        origin.event('video','foreground',1)
+        self.assertFalse(origin.from_stock(2))
+        origin.event('lg','foreground',3)
+        self.assertTrue(origin.from_stock(3.1))
+        origin.event('video','foreground',4)
+        self.assertTrue(origin.from_stock(4.05))
+        self.assertFalse(origin.from_stock(4.3))
+
+    def test_native_duplicate_launch_is_suppressed(self):
+        origin=e.NativeHomeOrigin('lg','ours')
+        origin.event('lg','foreground',1)
+        origin.event('ours','splash',2)
+        self.assertFalse(origin.needed(1.9))
+        origin.event('ours','foreground',3)
+        self.assertFalse(origin.needed(4))
+
+    def test_native_lg_short_home_launches_once_without_polling(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root=pathlib.Path(temp);daemon=e.Daemon(root,root/'runtime')
+            daemon.config={'app_id':'ours','stock_home':'lg'}
+            daemon.native_origin=e.NativeHomeOrigin('lg','ours')
+            daemon.native_origin.event('lg','foreground',1)
+            daemon.pending_home={'mode':'native-lg','down':2,'due':0,'until':1e20}
+            with patch.object(e,'luna',return_value={'returnValue':True}) as api:
+                daemon.actions();daemon.actions();self.assertEqual(api.call_count,1)
+                self.assertTrue(api.call_args.args[0].endswith('/launch'))
+            daemon.select.close()
+
+    def test_native_lg_late_job_cannot_steal_focus(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root=pathlib.Path(temp);daemon=e.Daemon(root,root/'runtime')
+            daemon.native_origin=e.NativeHomeOrigin('lg','ours')
+            daemon.pending_home={'mode':'native-lg','down':2,'due':0,'until':0}
+            with patch.object(e,'luna') as api:
+                daemon.actions();api.assert_not_called()
+            self.assertIsNone(daemon.pending_home)
+            daemon.select.close()
 
 if __name__=='__main__':unittest.main()

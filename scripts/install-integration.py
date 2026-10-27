@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Install integration code disabled. SSH config/identity stay on the PC."""
+import shlex
 import argparse
 import io
 import pathlib
@@ -17,19 +18,20 @@ root = pathlib.Path(__file__).resolve().parents[1]
 ssh = ['ssh', '-F', args.ssh_config, args.host]
 archive = io.BytesIO()
 with tarfile.open(fileobj=archive, mode='w:gz') as tar:
-    for name in ['engine.py', 'control.py', 'probe.py']:
+    for name in ['engine.py', 'control.py', 'probe.py', 'home_route.py']:
         tar.add(root/'system_integration'/name, arcname=name)
 remote = '/var/lib/bnhr-customhome-integration'
 if args.update:
+    backup_code = ("import pathlib,tarfile; p=pathlib.Path('/var/lib/bnhr-customhome-integration'); "
+                   "t=tarfile.open(p/'code-before-update.tar.gz','w:gz'); "
+                   "[t.add(p/n,arcname=n) for n in ['engine.py','control.py','config.json','home_route.py'] if (p/n).exists()]; t.close()")
     command = ('test "$(id -u)" = 0 && test -f ' + remote + '/config.json && '
                'python3 ' + remote + '/control.py stop && '
-               'tar -czf ' + remote + '/code-before-update.tar.gz -C ' + remote +
-               ' engine.py control.py config.json && tar -xzf - -C ' + remote)
+               'python3 -c ' + shlex.quote(backup_code) + ' && tar -xzf - -C ' + remote)
 else:
     command = 'test "$(id -u)" = 0 && test ! -e ' + remote + ' && mkdir -m 755 ' + remote + ' && tar -xzf - -C ' + remote
 subprocess.run(ssh + [command], input=archive.getvalue(), check=True)
 # shlex quotes only public configuration; credentials are never loaded by this script.
-import shlex
 command = 'python3 ' + remote + '/control.py init --input-name ' + shlex.quote(args.input_name) + ' --key-code ' + str(args.key_code)
 if not args.update:
     subprocess.run(ssh + [command], check=True)

@@ -1,10 +1,10 @@
-# Panorama launcher 0.2.0
+# Panorama launcher 0.2.2
 
 Panorama is the native HTML/CSS/JavaScript interface in `developer_home/`.
-It preserves the standalone application ID `com.bnhr.customhome`. Optional Home,
-boot and wake integration is separate and unchanged by this update. A brief stock
-LG Home screen may still appear with that integration. This update does not try
-to suppress it. No advertising, update or firmware components are modified.
+It preserves the standalone application ID `com.bnhr.customhome`. Optional
+[Home/boot/wake integration](system-integration.md) is managed separately. Version
+0.2.2 registers the Home category for its opt-in native routing. Boot/wake can still
+show LG first. No advertising, update or firmware components are modified.
 
 ## Configure and package
 
@@ -99,15 +99,17 @@ Preference failure/corruption and newly installed shortcut ordering have Node te
 node --test tests/preferences.test.cjs
 ```
 
-TV-specific measurements and pending physical confirmation are recorded separately
-in [the test record](panorama-test-record.md). These checks do not certify all LG models,
+TV-specific measurements and physical confirmations are recorded separately
+in [the current test record](panorama-022-test-record.md), with the
+[0.2.0 record](panorama-test-record.md) retained as history. These checks do not certify all LG models,
 long-session stability, subscription playback, or visual comfort at every distance.
-No new HDMI test or reboot is required for this UI-only update. Home latency is a
-separate future task. There is no new background poller, video layer or continuous
+No new HDMI test was performed. The optional native routing was checked through
+a true reboot; its timings and limitations are in the current record. There is no new background poller, video layer or continuous
 render loop: only a 15-second foreground clock and bounded service calls. The clock
 stops and CSS animations pause when the app is hidden.
 
 To remove only the application, first disable the separate Home/power integration
 if installed (see [system integration](system-integration.md)), then uninstall only
 `com.bnhr.customhome` with your existing app manager. Do not remove root/SSH hooks or
-other apps. To roll back just this UI, install the saved previous IPK instead.
+other apps. Before installing an older manifest without the Home category, stop the integration
+to restore SAM routing first. See the rollback sequence in the current test record.

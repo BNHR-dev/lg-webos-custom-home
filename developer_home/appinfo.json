@@ -1,6 +1,6 @@
 {
   "id": "com.bnhr.customhome",
-  "version": "0.2.0",
+  "version": "0.2.2",
   "vendor": "BNHR-dev",
   "type": "web",
   "main": "index.html",
@@ -10,5 +10,8 @@
   "iconColor": "#142b46",
   "trustLevel": "default",
   "disableBackHistoryAPI": true,
-  "resolution": "1920x1080"
+  "resolution": "1920x1080",
+  "appCategory": [
+    "home"
+  ]
 }

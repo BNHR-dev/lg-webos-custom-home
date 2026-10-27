@@ -16,7 +16,7 @@
             }
         };
     }
-    var prefs = P.load(storage, config), stage = document.getElementById("stage"), apps = config.apps || [], inputs = config.inputs || [], groups = [ [], [] ], selected = prefs.selected, modal = null, settingsPage = "main", settingsOrigin = null, returnSettings = null, busy = false, launchToken = 0, bridges = [], events = [], clockTimer = null, saveTimer = null;
+    var prefs = P.load(storage, config), stage = document.getElementById("stage"), apps = config.apps || [], inputs = config.inputs || [], groups = [ [], [] ], selected = prefs.selected, modal = null, settingsPage = "main", settingsOrigin = null, returnSettings = null, busy = false, launchToken = 0, bridges = [], events = [], clockTimer = null, saveTimer = null, appLayout = null;
     var TOOL_IDS = [ "com.amazoff.patcher", "com.pirate.refresh", "org.webosbrew.hbchannel", "org.webosbrew.safeupdate" ];
     try {
         if (!prefs.selected) prefs.selected = sessionStorage.getItem("home-focus") || "";
@@ -54,7 +54,7 @@
     window.homeDiagnostics = {
         events: events,
         pending: bridges,
-        version: "0.2.0",
+        version: "0.2.2",
         getState: function() {
             return {
                 busy: busy,
@@ -69,6 +69,7 @@
         }
     };
     function fit() {
+        appLayout = null;
         var scale = Math.min(innerWidth / 1920, innerHeight / 1080);
         stage.style.transform = "scale(" + scale + ")";
         stage.style.left = (innerWidth - 1920 * scale) / 2 + "px";
@@ -190,9 +191,15 @@
         content.appendChild(p);
         return p;
     }
+    function measureApps() {
+        var row = document.getElementById("apps"), rect = row.getBoundingClientRect(), scale = stage.getBoundingClientRect().width / 1920;
+        appLayout = {width:row.clientWidth, max:Math.max(0,row.scrollWidth-row.clientWidth), scroll:row.scrollLeft, items:new Map()};
+        groups[0].forEach(function(b){var box=b.getBoundingClientRect();appLayout.items.set(b,{left:(box.left-rect.left)/scale+row.scrollLeft,width:box.width/scale});});
+    }
     function focus(b) {
         if (!b || b.disabled || !document.contains(b)) return;
         if (b.classList.contains("is-focus") && document.activeElement === b) return;
+        if (b.classList.contains("app-button") && !appLayout) measureApps();
         var previous = document.querySelector(".is-focus");
         if (previous) previous.classList.remove("is-focus");
         b.classList.add("is-focus");
@@ -213,7 +220,11 @@
                 document.getElementById("focus-label").textContent = a.name;
                 document.getElementById("position").textContent = groups[0].indexOf(b) + 1 + " / " + groups[0].length;
                 var row = document.getElementById("apps");
-                row.scrollLeft = Math.max(0, b.offsetLeft - row.offsetLeft - (row.clientWidth - b.clientWidth) / 2);
+                var box=appLayout.items.get(b), next=appLayout.scroll;
+                if(box.left<next+20)next=box.left-20;
+                else if(box.left+box.width>next+appLayout.width-20)next=box.left+box.width-appLayout.width+20;
+                next=Math.max(0,Math.min(appLayout.max,next));
+                if(Math.abs(next-appLayout.scroll)>.5){row.scrollLeft=next;appLayout.scroll=next;}
             }
         }
         if (panel.contains(b)) {
@@ -238,8 +249,10 @@
         });
         b.dataset.appId = a.id;
         var src = localAsset(a.logo);
+        if(src && a.logoContainsName)b.classList.add("brand-lockup");
         function fallback() {
             b.classList.add("has-wordmark");
+            b.classList.remove("brand-lockup");
             var text = document.createElement("span");
             text.className = "wordmark";
             text.textContent = a.name;
@@ -267,6 +280,7 @@
         return b;
     }
     function renderHome(keepFocus) {
+        appLayout = null;
         var list = entertainment(), container = document.getElementById("apps");
         container.textContent = "";
         groups = [ [], [] ];
@@ -683,7 +697,7 @@
         });
     }
     record("ready", {
-        version: "0.2.0",
+        version: "0.2.2",
         apps: apps.length
     });
 })();

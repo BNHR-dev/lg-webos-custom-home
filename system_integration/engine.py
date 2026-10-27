@@ -10,6 +10,7 @@ import signal
 import struct
 import subprocess
 import time
+import home_route
 
 INPUT_FORMAT = '@llHHi'
 INPUT_SIZE = struct.calcsize(INPUT_FORMAT)
@@ -101,6 +102,28 @@ class PowerTransitions:
         return wake
 
 
+class NativeHomeOrigin:
+    """Qualify only a physical short Home that began on the stock launcher."""
+    def __init__(self, stock, target):
+        self.stock, self.target = stock, target
+        self.current = self.previous = None
+        self.changed = -100
+        self.target_activity = -100
+
+    def event(self, app, event, now):
+        if event == 'foreground' and app:
+            self.previous, self.current, self.changed = self.current, app, now
+        if app == self.target and event in ['splash', 'launch', 'foreground']:
+            self.target_activity = now
+
+    def from_stock(self, now):
+        # The compositor may close LG on key-down before its lifecycle event is read.
+        return self.current == self.stock or (self.previous == self.stock and now - self.changed < .2)
+
+    def needed(self, down):
+        return self.current != self.target and self.target_activity < down
+
+
 def boot_time():
     for line in pathlib.Path('/proc/stat').read_text().splitlines():
         if line.startswith('btime '):
@@ -134,6 +157,12 @@ class Daemon:
         self.config = {}
         self.home_keys = None
         self.stopping = False
+        self.next_route_check = 0
+        self.native_child = None
+        self.native_parser = JSONStream()
+        self.native_origin = None
+        self.native_down = {}
+        self.next_native_subscribe = 0
 
     def log(self, event, **detail):
         path = self.runtime / 'events.jsonl'
@@ -196,19 +225,61 @@ class Daemon:
         self.power_child = p; self.power_parser = JSONStream()
         self.select.register(p.stdout, selectors.EVENT_READ, 'power')
 
+    def stop_native(self):
+        if self.native_child is not None:
+            p = self.native_child
+            self.select.unregister(p.stdout)
+            p.terminate()
+            try: p.wait(timeout=1)
+            except subprocess.TimeoutExpired: p.kill(); p.wait()
+            p.stdin.close(); p.stdout.close(); self.native_child = None
+        self.native_origin = None; self.native_down.clear()
+
+    def start_native(self):
+        self.native_origin = NativeHomeOrigin(self.config['stock_home'], self.config['app_id'])
+        initial = luna('luna://com.webos.applicationManager/getForegroundAppInfo', {})
+        self.native_origin.event(initial.get('appId'), 'foreground', time.monotonic())
+        p = subprocess.Popen(['luna-send', '-i', 'luna://com.webos.applicationManager/getAppLifeEvents',
+                              '{"subscribe":true}'], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                             stderr=subprocess.DEVNULL)
+        os.set_blocking(p.stdout.fileno(), False)
+        self.native_child = p; self.native_parser = JSONStream()
+        self.select.register(p.stdout, selectors.EVENT_READ, 'native')
+
+    def read_native(self):
+        data = os.read(self.native_child.stdout.fileno(), 16384)
+        if not data:
+            self.stop_native(); self.next_native_subscribe = time.monotonic() + 2
+            self.error('native_subscription_closed'); return
+        for msg in self.native_parser.feed(data):
+            if not msg.get('returnValue', True):
+                self.stop_native(); self.next_native_subscribe = time.monotonic() + 30
+                self.error('native_subscription_rejected'); return
+            self.native_origin.event(msg.get('appId'), msg.get('event'), time.monotonic())
+
     def refresh(self):
         old = self.config
         self.config = read_json(self.config_path, {})
         if self.config.get('lease_until', 0) and time.time() >= self.config['lease_until']:
             self.config['home'] = False; self.config['lease_until'] = 0
             write_json(self.config_path, self.config)
+            if self.config.get('home_mode') == 'native': home_route.restore(self.config, luna)
             self.log('temporary_home_expired')
         if not self.config.get('home'):
             self.pending_home = None
             if self.inputs: self.close_inputs()
-        elif not old.get('home') or old.get('home_key_code') != self.config.get('home_key_code'):
+        elif not old.get('home') or old.get('home_key_code') != self.config.get('home_key_code') or old.get('home_mode') != self.config.get('home_mode'):
             if self.inputs: self.close_inputs()
             self.home_keys = ShortHome(self.config['home_key_code'], self.config.get('max_hold', .65))
+        if not (self.config.get('home_mode') == 'native' and self.config.get('home')):
+            self.stop_native()
+        if self.config.get('home_mode') == 'native' and self.config.get('home') and time.monotonic() >= self.next_route_check:
+            self.next_route_check = time.monotonic() + 5
+            if not home_route.installed(self.config):
+                home_route.restore(self.config, luna)
+                self.config['home'] = False
+                write_json(self.config_path, self.config)
+                self.log('native_home_app_missing_restored')
         if not self.config.get('power'):
             self.stop_power(); self.pending_power = None
         elif not old.get('power'):
@@ -233,16 +304,31 @@ class Daemon:
             for i in range(count):
                 sec, usec, typ, code, value = struct.unpack(INPUT_FORMAT, data[i * INPUT_SIZE:(i + 1) * INPUT_SIZE])
                 if typ != 1: continue
+                if code == self.config['home_key_code'] and value in [0, 1]:
+                    self.log('home_input', value=value, kernel_time=sec + usec / 1000000)
                 if not (0 <= usec < 1000000 and abs(sec - time.time()) < 10):
                     self.error('input_timestamp_invalid'); continue
-                if self.home_keys.event(fd, code, value, sec + usec / 1000000):
-                    now = time.monotonic()
+                now = time.monotonic()
+                native = self.config.get('home_mode') == 'native'
+                if native and code == self.config['home_key_code'] and value == 1:
+                    self.native_down[fd] = (bool(self.native_origin and self.native_origin.from_stock(now)), now)
+                short = self.home_keys.event(fd, code, value, sec + usec / 1000000)
+                if native:
+                    if code == self.config['home_key_code'] and value == 0:
+                        stock, down = self.native_down.pop(fd, (False, now))
+                        if short and stock:
+                            self.pending_home = {'mode':'native-lg', 'down':down, 'due':now + .10,
+                                'until':now + min(1.5,max(0,sec + usec / 1000000 + 1.5 - time.time())), 'tries':0}
+                            self.log('native_home_from_lg')
+                    continue
+                if short:
                     self.pending_home = {'due': max(now + .3, self.last_launch + .8), 'until': now + 2, 'tries': 0}
                     self.log('home_short')
         except OSError:
             self.select.unregister(fd); os.close(fd)
             del self.inputs[fd]; del self.input_buffers[fd]
             self.home_keys.down.pop(fd, None)
+            self.native_down.pop(fd, None)
             self.error('input_disconnected')
 
     def read_power(self):
@@ -266,7 +352,9 @@ class Daemon:
     def launch(self, reason):
         if time.monotonic() - self.last_launch < .8:
             self.log('launch_coalesced', reason=reason); return True
+        if reason in ['home', 'home-lg']: self.log('home_launch_request')
         result = luna('luna://com.webos.applicationManager/launch', {'id': self.config['app_id']})
+        if reason in ['home', 'home-lg']: self.log('home_launch_response', accepted=bool(result.get('returnValue')))
         if result.get('returnValue'):
             self.last_launch = time.monotonic(); self.log('launch', reason=reason)
             return True
@@ -277,7 +365,15 @@ class Daemon:
         now = time.monotonic()
         if self.pending_home and now >= self.pending_home['due']:
             job = self.pending_home
+            if job.get('mode') == 'native-lg':
+                self.pending_home = None
+                if now <= job['until'] and self.native_origin and self.native_origin.needed(job['down']):
+                    if self.launch('home-lg'): self.pending_power = None
+                else: self.log('native_home_no_extra_launch')
+                return
+            self.log('home_foreground_request')
             foreground = luna('luna://com.webos.applicationManager/getForegroundAppInfo', {})
+            self.log('home_foreground_response', app_id=foreground.get('appId'))
             now = time.monotonic()
             if foreground.get('appId') == self.config['stock_home'] and now <= job['until']:
                 self.pending_home = None
@@ -322,17 +418,26 @@ class Daemon:
                     self.scan_inputs(); self.next_input_scan = now + 5
                 if self.config.get('power') and self.power_child is None and now >= self.next_subscribe:
                     self.start_power()
-                for item, _ in self.select.select(.15):
+                # Wake promptly for a pending short Home; ordinary power timing stays unchanged.
+                wait = min(.15, max(0, self.pending_home['due'] - time.monotonic())) if self.pending_home else .15
+                if self.config.get('home') and self.config.get('home_mode') == 'native' and self.native_child is None and now >= self.next_native_subscribe:
+                    self.start_native()
+                for item, _ in self.select.select(wait):
                     if item.data == 'input': self.read_input(item.fd)
-                    else: self.read_power()
+                    elif item.data == 'power': self.read_power()
+                    else: self.read_native()
                 self.actions()
                 write_json(self.runtime / 'status.json', {'pid': os.getpid(), 'started': self.started,
                            'counts': dict(self.counts), 'input_devices': list(self.inputs.values()),
                            'power_child': self.power_child.pid if self.power_child else None,
+                           'native_child': self.native_child.pid if self.native_child else None,
                            'power_state': self.power_state.previous, 'home_enabled': bool(self.config.get('home')),
                            'power_enabled': bool(self.config.get('power'))})
         finally:
-            self.close_inputs(); self.stop_power(); self.select.close()
+            if self.config.get('home_mode') == 'native':
+                try: home_route.restore(self.config, luna)
+                except RuntimeError as error: self.log('native_home_restore_failed', error=str(error))
+            self.close_inputs(); self.stop_native(); self.stop_power(); self.select.close()
             (self.runtime / 'daemon.pid').unlink(missing_ok=True)
             self.log('daemon_stopped')
             self.lock.close()
