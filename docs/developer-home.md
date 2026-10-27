@@ -71,6 +71,8 @@ The inspector console has `[customhome]` events and `window.homeDiagnostics`, a 
 
 ## Remove only this app
 
+If the optional [system integration](system-integration.md) is installed, disable/remove those mechanisms first with their controller. That removal keeps this app and root/SSH intact; the commands below then remove only the app.
+
 ```sh
 npx ares-launch --device EXISTING_DEVICE_NAME --close com.bnhr.customhome
 npx ares-install --device EXISTING_DEVICE_NAME --remove com.bnhr.customhome

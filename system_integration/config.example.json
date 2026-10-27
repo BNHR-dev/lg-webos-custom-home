@@ -1,0 +1,10 @@
+{
+  "app_id": "com.bnhr.customhome",
+  "stock_home": "com.webos.app.home",
+  "input_name": "REPLACE_WITH_MEASURED_DEVICE_NAME",
+  "home_key_code": null,
+  "max_hold": 0.65,
+  "home": false,
+  "power": false,
+  "lease_until": 0
+}

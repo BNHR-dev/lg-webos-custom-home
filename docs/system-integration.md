@@ -1,0 +1,99 @@
+# System integration: passive Home, boot and wake
+
+This phase integrates the existing manual launcher without visual/business changes. The application files, LG app registrations, default home setting, compositor key filters, advertising components, firmware and update settings are not edited. Root access is a prerequisite; see [administrator access](administrator-access.md).
+
+## Method and boundaries
+
+Home uses a passive read-only input descriptor, never an exclusive grab. Device identity is resolved by name through sysfs and checked with EVIOCGNAME; an event index is not hardcoded. The native input structure follows the Python process ABI and must be verified by the probe on the target TV. Kernel architecture alone is insufficient: the tested aarch64 kernel has a 32-bit Python userspace and 16-byte native input events.
+
+A short press is recognized only on release. Repeats and holds at least 0.65 seconds are ignored; the threshold is configurable. After a short press, the daemon waits briefly for LG Home to become the actual foreground app. Only then does it call launch for the configured target, without closing/reloading an already running instance. Requests coalesce; failures end that request rather than trigger an endless launch loop. If LG does not open (for example, a modal policy blocks Home), this daemon does not force its way over another app.
+
+A short flash of LG Home can remain visible. Long Home and every other key continue through LG's native handling. Return from the existing app can reach LG because merely observing LG in foreground is never a redirect trigger. Stopping the daemon immediately leaves native LG behavior available; no mapping needs to be restored. The management command lg-home opens LG directly without a physical Home trigger.
+
+Native interfaces were considered first. On the tested firmware, the compositor calls launchDefaultApp and setDefaultApp is exposed, but changing that mapping is persistent and requires different app registration/back/fallback semantics. Lifecycle subscriptions getAppLifeEvents/getAppLifeStatus were also examined: the observed Home launch has reason undefined, so those events cannot safely distinguish a Home press from an ordinary return to LG. These observations motivated the passive input method, while power handling uses its native Luna API.
+
+## Installation, initially disabled
+
+The host needs Python 3 and an already configured administrator SSH alias. The TV needs its existing Python 3, root Luna access and Homebrew boot hooks. There is no PC HTTP server or ongoing host connection in the final design.
+
+Run the passive probe on the TV while pressing only the requested keys, and review the format, timestamps, device identity and code. Do not copy the measured profile below blindly. The standalone probe source is system_integration/probe.py; it does not activate integration.
+
+```sh
+python3 scripts/install-integration.py --ssh-config YOUR_PRIVATE_SSH_CONFIG --host YOUR_ADMIN_ALIAS \
+  --input-name YOUR_MEASURED_DEVICE_NAME --key-code YOUR_MEASURED_HOME_CODE
+```
+
+Installation stages only the three project Python files. It initializes home=false and power=false, starts no daemon and creates no boot hook. For a code update, --update first stops the project daemon and archives the previous project code/config under its own directory; it preserves options and leaves the daemon stopped. Start it explicitly after review.
+
+Before activation, copy the existing launcher, root/SSH startup and any previous integration files to a private recovery location. These are file backups, not a system/firmware image. Keep all credentials and raw observations outside Git.
+
+## Management and rollback
+
+On the TV, use Python 3 and the fixed project controller:
+
+```sh
+python3 /var/lib/bnhr-customhome-integration/control.py status
+python3 /var/lib/bnhr-customhome-integration/control.py home on --temporary 900
+python3 /var/lib/bnhr-customhome-integration/control.py home off
+python3 /var/lib/bnhr-customhome-integration/control.py power on
+python3 /var/lib/bnhr-customhome-integration/control.py power off
+python3 /var/lib/bnhr-customhome-integration/control.py lg-home
+python3 /var/lib/bnhr-customhome-integration/control.py stop
+python3 /var/lib/bnhr-customhome-integration/control.py start
+```
+
+Run these through your existing administrator SSH connection. home and power are independent flags. The temporary Home lease expires after 900 seconds; test home off and ordinary LG Home before making anything persistent.
+
+Only after physical Home validation:
+
+```sh
+python3 /var/lib/bnhr-customhome-integration/control.py persist on
+# To remove only the automatic daemon start:
+python3 /var/lib/bnhr-customhome-integration/control.py persist off
+# To remove all and only this integration, keeping the launcher and root/SSH:
+python3 /var/lib/bnhr-customhome-integration/control.py remove
+```
+
+Persist on clears the temporary lease and writes only this project's Homebrew hook. It does not independently enable either feature. Stop leaves flags unchanged; remove stops this process, removes this hook and deletes only the two fixed project directories. It never uninstalls an app or removes webosbrew, its official startup script, or the separate administrator SSH hook.
+
+Files/processes owned by this phase:
+
+| Item | Purpose |
+| --- | --- |
+| /var/lib/bnhr-customhome-integration | Code and feature flags |
+| /tmp/bnhr-customhome-integration | Exclusive lock, PID, handled-boot marker, status, bounded logs |
+| /var/lib/webosbrew/init.d/40-bnhr-customhome-integration | Optional boot hook |
+| One controller run process | Input and power event handling |
+| At most one persistent luna-send power subscription | Present only while power integration is enabled |
+
+One-shot Luna queries have deadlines. A file lock prevents duplicate daemons. Stop terminates owned children; it never uses a global pkill. Logs rotate at 64 KiB and repeated errors are rate-limited. They stay local and may reveal installed app IDs; do not publish them unreviewed.
+
+## Boot, wake and session reconnections
+
+Boot is requested only by the Homebrew boot hook and deduplicated with a per-boot marker in /tmp. On this TV boot_id can remain constant and btime can shift across suspend, so neither value is used alone as a boot identity. The boot hook requests at most one opening for that boot, during a bounded startup window. A controlled reboot is verified separately using reset uptime, cleared temporary sentinel and fresh process state together with the boot-time observation. The handled marker prevents a restarted daemon/hook from creating a second boot launch. Enabling power midway through a session records the current boot as handled and does not open the app immediately.
+
+Wake requires an observed transition from standby/suspend to Active. An initial Active snapshot, reconnect with the same Active state and Screen Saver dismissal do not count as wakes. Boot/wake launch retries are bounded; a changed foreground app during delayed retries cancels the pending request. Overlapping triggers coalesce and an already foreground target is not relaunched.
+
+The daemon does not repeatedly enforce a preferred foreground app. Restarting it during an Active session starts by observing a baseline; it does not pull focus back to the launcher. No extra HDMI behavior is added.
+
+## Test record
+
+Target: LG 43UR78006LK, firmware 33.31.75, SDK 10.3.2, webOS 25. The existing manual app and administrator access were previously validated.
+
+- Measured: LGE RCU, event0 at observation time; Home773; Python3.10.13, native @llHHi size16, pointer32bits, aligned events and valid timestamps. Short0.169s, long3.162s. These are observations, not global defaults.
+- Owner baseline: short Home opens LG; long Home activates zoom, with the up arrow also tried.
+- Installer verification: features initially off, no hook; temporary Home enabled then disabled and process stopped; no daemon remains after stop.
+- Local tests cover short/long/repeat filtering, fragmented/multiline JSON, Active baseline/reconnect/screensaver, pending Home cancellation, one launch, failed-launch termination, bounded wake retries, user navigation cancellation and overlapping-trigger coalescing.
+- Owner temporary Home trial: short Home from YouTube opens Mon accueil after a brief LG screen and loading indicator; repeated separated presses repeat this visible transition. Return reaches LG and long Home still activates the native zoom, including from Mon accueil.
+- Runtime evidence: two closely spaced Home releases were coalesced to one launch; no autonomous redirect followed without another short press. A failed/blocked foreground condition ended its bounded request rather than redirecting another application.
+- Owner rollback trial, before persistence: with Home disabled, a short press from YouTube leaves LG Home displayed without redirecting back.
+- After this confirmation, the project hook was enrolled and Home/power enabled independently. No launcher files or root/SSH startup files changed.
+- A warm daemon restart while YouTube was foreground did not change focus. Its power subscription was then deliberately terminated once and reconnected; YouTube remained foreground. The single expected subscription-close diagnostic is not a recurring spontaneous failure.
+- Owner confirms automatic opening after the Power cycle, with LG/loading/custom-home transition. The same daemon and subscription observed Suspend → Active; one wake launch occurred about 1.5 seconds after Active. btime shifted during suspend, so the boot marker was changed to tmpfs without changing wake behavior.
+- Controlled true reboot: the pre-reboot temporary sentinel disappeared, uptime reset and fresh daemon/PIDs appeared. The boot hook started the integration about 42.6 seconds after kernel boot; exactly one launch request was accepted at about 43.2 seconds. The combined SSH/foreground check completed at about 141 seconds and showed the custom home in foreground. The exact first visible frame was not timed; do not confuse the launch request time with a guaranteed display time.
+- Root SSH returned as UID0; the server still advertised only publickey and rejected an unauthenticated attempt. Homebrew root=true, telnetDisabled=true, failsafe=false, sshdEnabled=true and blockUpdates=false; no Telnet listener observed.
+- After boot, there is exactly one integration daemon, one power subscription and no temporary lifecycle probe. The boot event log contains one startup, one boot request and one launch, with no spontaneous error loop.
+- Independent disable checks: power off terminates its subscription while Home remains active; home off closes input descriptors while power remains active. Both were restored on at the end.
+- All seven application files, the official Homebrew startup and the existing SSH hook remain byte-identical to the baseline. The only added startup hook is 40-bnhr-customhome-integration. The native default-app setting and all 153 retained app IDs are unchanged.
+- The native Screen Saver is allowed to appear during inactivity and is not repeatedly dismissed by this integration.
+- Owner visual feedback after the true boot: no loading indicator in that final trial, but a few LG Home frames remain visible before Mon accueil. This is not a zero-frame replacement; loading may differ across trials.

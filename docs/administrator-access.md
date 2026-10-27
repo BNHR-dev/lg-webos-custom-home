@@ -1,5 +1,7 @@
 # Administrator access verification — separate from launcher integration
 
+This is the historical administrator-access phase. A later [system-integration phase](system-integration.md) adds Home/boot/wake handling without changing this root/SSH infrastructure.
+
 Test date: 2026-10-27. One LG **43UR78006LK**, firmware **33.31.75**, SDK **10.3.2**, marketed as webOS 25. Kernel architecture: aarch64. These observations do not certify other models or firmware.
 
 This phase obtained and verified root access. It did not alter the launcher source, Home handling, automatic launch of the custom home, advertising apps or firmware. The manual launcher remains an ordinary app. Root infrastructure starting at boot is distinct from launching a home screen at boot.

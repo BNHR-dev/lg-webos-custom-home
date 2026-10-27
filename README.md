@@ -7,6 +7,8 @@
 > The original project and instructions below are retained with credit to NaveenDA;
 > their root-dependent launcher features are not validated on webOS 25 by this fork.
 > Administrator access was verified separately: [root/SSH test record](docs/administrator-access.md).
+> Optional system integration is documented in [Home, boot and wake](docs/system-integration.md),
+> with independent controls and rollback. The legacy scripts below remain separate from this implementation.
 
 # LG webOS Custom Home Screen
 
