@@ -185,4 +185,49 @@ class IntegrationTests(unittest.TestCase):
             self.assertIsNone(daemon.pending_home)
             daemon.select.close()
 
+class IdleWorkTests(unittest.TestCase):
+    def test_unchanged_config_is_not_reparsed_and_atomic_replacement_is_detected(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = pathlib.Path(temp)
+            path = root / 'config.json'
+            e.write_json(path, {'home': False, 'power': False})
+            daemon = e.Daemon(root, root / 'runtime')
+            with patch.object(e, 'read_json', wraps=e.read_json) as read:
+                for _ in range(20): daemon.refresh()
+                self.assertEqual(read.call_count, 1)
+                e.write_json(path, {'home': False, 'power': True})
+                daemon.refresh()
+                self.assertEqual(read.call_count, 2)
+                self.assertTrue(daemon.config['power'])
+                self.assertIsNone(daemon.pending_power)  # Config reload cannot steal focus.
+            daemon.select.close()
+
+    def test_status_is_written_only_when_observable_state_changes(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = pathlib.Path(temp)
+            daemon = e.Daemon(root, root / 'runtime')
+            with patch.object(e, 'write_json', wraps=e.write_json) as write:
+                for _ in range(20): daemon.publish_status()
+                self.assertEqual(write.call_count, 1)
+                daemon.counts['home_short'] += 1
+                daemon.publish_status()
+                self.assertEqual(write.call_count, 2)
+                daemon.config['home'] = True
+                daemon.publish_status()
+                self.assertEqual(write.call_count, 3)
+            daemon.select.close()
+
+    def test_temporary_lease_expires_even_when_config_is_cached(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = pathlib.Path(temp)
+            e.write_json(root / 'config.json', {'home': True, 'power': False,
+                         'home_key_code': 773, 'lease_until': 101})
+            daemon = e.Daemon(root, root / 'runtime')
+            with patch.object(e.time, 'time', return_value=100): daemon.refresh()
+            self.assertTrue(daemon.config['home'])
+            with patch.object(e.time, 'time', return_value=102): daemon.refresh()
+            self.assertFalse(daemon.config['home'])
+            self.assertFalse(e.read_json(root / 'config.json', {})['home'])
+            daemon.select.close()
+
 if __name__=='__main__':unittest.main()

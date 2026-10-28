@@ -4,7 +4,9 @@ The launcher and integration are separate. Root access is a prerequisite; see
 [administrator access](administrator-access.md). No firmware, advertising, update,
 compositor key-filter or root/SSH startup file is changed. Native mode changes the
 SAM default Home category reversibly; passive mode leaves that mapping unchanged.
-The current test record is [Panorama 0.2.2](panorama-022-test-record.md).
+The Home-routing test record is [Panorama 0.2.2](panorama-022-test-record.md).
+A later [idle-work pass](integration-idle-pass.md) reduces redundant config/status
+work without changing launch timing or the app version.
 
 ## Method and boundaries
 

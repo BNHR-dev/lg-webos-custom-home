@@ -155,6 +155,8 @@ class Daemon:
         self.boot_requested = boot
         self.boot_deadline = time.monotonic() + 90
         self.config = {}
+        self.config_signature = None
+        self.last_status = None
         self.home_keys = None
         self.stopping = False
         self.next_route_check = 0
@@ -259,7 +261,16 @@ class Daemon:
 
     def refresh(self):
         old = self.config
-        self.config = read_json(self.config_path, {})
+        # The controller replaces config atomically. Keep the existing event-loop
+        # cadence, but parse the file only when its identity/content metadata changes.
+        try:
+            stat = self.config_path.stat()
+            signature = (stat.st_ino, stat.st_mtime_ns, stat.st_size)
+        except OSError:
+            signature = None
+        if signature is None or signature != self.config_signature:
+            self.config = read_json(self.config_path, {})
+            self.config_signature = signature
         if self.config.get('lease_until', 0) and time.time() >= self.config['lease_until']:
             self.config['home'] = False; self.config['lease_until'] = 0
             write_json(self.config_path, self.config)
@@ -403,6 +414,18 @@ class Daemon:
                     self.log('power_retries_exhausted'); self.pending_power = None
                 else: job['due'] = now + 2
 
+    def publish_status(self):
+        state = {'pid': os.getpid(), 'started': self.started,
+                 'counts': dict(self.counts), 'input_devices': list(self.inputs.values()),
+                 'power_child': self.power_child.pid if self.power_child else None,
+                 'native_child': self.native_child.pid if self.native_child else None,
+                 'power_state': self.power_state.previous,
+                 'home_enabled': bool(self.config.get('home')),
+                 'power_enabled': bool(self.config.get('power'))}
+        if state != self.last_status:
+            write_json(self.runtime / 'status.json', state)
+            self.last_status = state
+
     def run(self):
         self.lock = (self.runtime / 'daemon.lock').open('a')
         try: fcntl.flock(self.lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
@@ -427,12 +450,7 @@ class Daemon:
                     elif item.data == 'power': self.read_power()
                     else: self.read_native()
                 self.actions()
-                write_json(self.runtime / 'status.json', {'pid': os.getpid(), 'started': self.started,
-                           'counts': dict(self.counts), 'input_devices': list(self.inputs.values()),
-                           'power_child': self.power_child.pid if self.power_child else None,
-                           'native_child': self.native_child.pid if self.native_child else None,
-                           'power_state': self.power_state.previous, 'home_enabled': bool(self.config.get('home')),
-                           'power_enabled': bool(self.config.get('power'))})
+                self.publish_status()
         finally:
             if self.config.get('home_mode') == 'native':
                 try: home_route.restore(self.config, luna)
